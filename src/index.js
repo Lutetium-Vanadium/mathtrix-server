@@ -9,43 +9,30 @@ let blobs = {};
 
 io.on("connection", (socket) => {
   console.log("a user connected");
-  socket.emit("test", "hello world");
+  socket.emit("init-blobs", blobs);
 
-  socket.on("join", (x, y, evtName) => {
-    blobs[socket.id] = new Blob(x, y, evtName);
+  socket.on("join", (evtName, direction) => {
+    blobs[socket.id] = { evtName, direction };
+
+    console.log(blobs);
+
+    io.emit("join", socket.id, evtName, direction);
   });
 
   socket.on("update:evt", (evtName) => {
-    blobs[socket.id].evtName = evtName;
-  });
-
-  socket.on("update:pos", (x, y) => {
-    blobs[socket.id].setPos(x, y);
+    if (blobs[socket.id]) {
+      blobs[socket.id].evtName = evtName;
+      io.emit("update:evt", socket.id, evtName);
+    }
   });
 
   socket.on("disconnect", () => {
     delete blobs[socket.id];
+    io.emit("leave", socket.id);
     console.log("a user has disconnected");
   });
 });
 
-setInterval(() => {
-  io.emit("update", Object.values(blobs));
-}, 20);
-
 http.listen(PORT, () => {
   console.log(`listening on port ${PORT}`);
 });
-
-class Blob {
-  constructor(x, y, evtName) {
-    this.x = x;
-    this.y = y;
-    this.evtName = evtName;
-  }
-
-  setPos(x, y) {
-    this.x = x;
-    this.y = y;
-  }
-}
